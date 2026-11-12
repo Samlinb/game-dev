@@ -1,0 +1,14 @@
+{
+  "name": "ui-workflow",
+  "version": "0.1.0",
+  "package_version": 2,
+  "editor": ">=3.8.0",
+  "main": "./main.cjs",
+  "contributions": {
+    "menu": [
+      {"path": "i18n:menu.extension/UI Workflow", "label": "Import Selected Bundle", "message": "import-bundle"}
+    ],
+    "messages": {"import-bundle": {"methods": ["importBundle"]}},
+    "scene": {"script": "./scene.cjs", "methods": ["build", "remove"]}
+  }
+}

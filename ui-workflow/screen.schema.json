@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "UI Workflow screen v1",
+  "type": "object",
+  "required": ["version", "id", "width", "height", "assets", "nodes"],
+  "properties": {
+    "version": {"const": 1},
+    "id": {"$ref": "#/$defs/id"},
+    "width": {"$ref": "#/$defs/size"},
+    "height": {"$ref": "#/$defs/size"},
+    "assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}},
+    "nodes": {"type": "array", "minItems": 1, "items": {"$ref": "#/$defs/node"}}
+  },
+  "$defs": {
+    "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]{0,63}$"},
+    "size": {"type": "integer", "minimum": 1, "maximum": 16384},
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {"type": "number"}, "y": {"type": "number"},
+        "width": {"$ref": "#/$defs/size"}, "height": {"$ref": "#/$defs/size"}
+      }
+    },
+    "asset": {
+      "type": "object",
+      "required": ["id", "file"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "file": {"type": "string", "pattern": "\\.png$"},
+        "border": {
+          "type": "object",
+          "required": ["left", "top", "right", "bottom"],
+          "properties": {
+            "left": {"type": "integer", "minimum": 0}, "top": {"type": "integer", "minimum": 0},
+            "right": {"type": "integer", "minimum": 0}, "bottom": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "rect"],
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "type": {"enum": ["group", "image", "text", "button"]},
+        "rect": {"$ref": "#/$defs/rect"},
+        "anchor": {"enum": ["topLeft", "topRight", "center", "bottomCenter", "stretch"]},
+        "asset": {"$ref": "#/$defs/id"},
+        "pressed": {"$ref": "#/$defs/id"},
+        "disabled": {"$ref": "#/$defs/id"},
+        "action": {"$ref": "#/$defs/id"},
+        "text": {"type": "string", "pattern": "^[^\\r\\n]*$"},
+        "fontSize": {"type": "integer", "minimum": 1, "maximum": 512},
+        "color": {"type": "string", "pattern": "^#[0-9a-fA-F]{6}$"},
+        "align": {"enum": ["left", "center", "right"]},
+        "children": {"type": "array", "items": {"$ref": "#/$defs/node"}}
+      },
+      "allOf": [
+        {"if": {"properties": {"type": {"enum": ["image", "button"]}}}, "then": {"required": ["asset"]}},
+        {"if": {"properties": {"type": {"const": "button"}}}, "then": {"required": ["action"]}},
+        {"if": {"properties": {"type": {"const": "text"}}}, "then": {"required": ["text", "fontSize", "color", "align"]}}
+      ]
+    }
+  }
+}

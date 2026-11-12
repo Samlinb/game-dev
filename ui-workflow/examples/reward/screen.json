@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "id": "reward_popup",
+  "width": 480,
+  "height": 640,
+  "assets": [
+    {"id": "backdrop", "file": "art/backdrop.png"},
+    {"id": "panel", "file": "art/panel.png", "border": {"left": 24, "top": 24, "right": 24, "bottom": 24}},
+    {"id": "medal", "file": "art/medal.png"},
+    {"id": "close", "file": "art/close.png"},
+    {"id": "claim", "file": "art/claim.png", "border": {"left": 20, "top": 18, "right": 20, "bottom": 18}},
+    {"id": "claim_pressed", "file": "art/claim_pressed.png", "border": {"left": 20, "top": 18, "right": 20, "bottom": 18}},
+    {"id": "claim_disabled", "file": "art/claim_disabled.png", "border": {"left": 20, "top": 18, "right": 20, "bottom": 18}}
+  ],
+  "nodes": [
+    {"id": "backdrop", "type": "image", "asset": "backdrop", "anchor": "stretch", "rect": {"x": 0, "y": 0, "width": 480, "height": 640}},
+    {"id": "dialog", "type": "image", "asset": "panel", "anchor": "center", "rect": {"x": 62, "y": 142, "width": 356, "height": 356}, "children": [
+      {"id": "reward_title", "type": "text", "text": "Mission Complete", "color": "#F9E8BF", "align": "center", "fontSize": 24, "rect": {"x": 42, "y": 38, "width": 272, "height": 34}},
+      {"id": "reward_medal", "type": "image", "asset": "medal", "rect": {"x": 134, "y": 92, "width": 88, "height": 88}},
+      {"id": "reward_amount", "type": "text", "text": "+250 Coins", "color": "#E2BA68", "align": "center", "fontSize": 22, "rect": {"x": 66, "y": 198, "width": 224, "height": 32}},
+      {"id": "claim_button", "type": "button", "asset": "claim", "pressed": "claim_pressed", "disabled": "claim_disabled", "action": "claim_reward", "anchor": "bottomCenter", "rect": {"x": 60, "y": 270, "width": 236, "height": 56}, "children": [
+        {"id": "claim_label", "type": "text", "text": "Claim Reward", "color": "#302110", "align": "center", "fontSize": 20, "rect": {"x": 12, "y": 0, "width": 212, "height": 56}}
+      ]},
+      {"id": "close_button", "type": "button", "asset": "close", "action": "close_dialog", "anchor": "topRight", "rect": {"x": 308, "y": 16, "width": 32, "height": 32}}
+    ]}
+  ]
+}
