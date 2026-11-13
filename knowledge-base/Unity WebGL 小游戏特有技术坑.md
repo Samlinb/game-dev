@@ -70,7 +70,7 @@ iOS 小游戏整机内存红线：低档机 ≤ 1GB、高档机 ≤ 1.4GB。**�
 | **内存不足** | `WebAssembly.Memory allocation failed` / `Out of Memory` / Loading 50-80% 卡住 | 查 Player Settings → Web → Configuration → **WebGL Memory Size**（默认 256MB，iOS 建议 ≤ 128MB）；查 Player Settings → Web → Other Settings → Managed Stripping Level 是否 High | Memory Size 降到真机实测能跑的最低值；配合代码裁剪 + wasm 分包 |
 | **代码裁剪过度** | 启动时报 `Missing method` / `MethodAccessException` / 反射调用空引用 | 用 dotPeek 拆 `ManagedStripped` 目录下的 dll 看关键方法是否被裁；微信 wasm 分包工具首次导出会提示"需要首次拉取代码分包" | 加 `link.xml` 保留反射/序列化/动态调用的类型；更新分包工具后重新导出 |
 | **IL2CPP 版本不匹配** | Loading 条直接卡死无报错，或 Console 报 `Invalid opcode` | 团结引擎版本 vs Unity 基础版本 vs 微信 unity-webgl-transform SDK 版本是否对齐 | 保持三者同主版本号；用团结引擎自带的 unity-webgl-transform 插件 |
-| **iOS 15.4 HybridCLR BUG** | `Not implemented` / `Class::FromIl2CppType` | HybridCLR + iOS 15.4 组合 | 改用微信 wasm 代码分包 V2 或升级系统（用户端升级） |
+| **iOS 15.4 HybridCLR BUG** | `Not implemented` / `Class::FromIl2CppType` | HybridCLR + iOS 15.4（含 15.4.1）组合 | 这是 Unity + iOS 15.4 的 WebKit/il2cpp 已知 BUG，HybridCLR 官方给两个方案：①微信 wasm 代码分包（推荐，步骤见 §2.4）；②对 `GenericMetadata::InflateIfNeeded` 关闭 clang 优化（步骤见 §2.4，2026-11-13 全文核实）。用户端升级 iOS 也可绕过 |
 
 ### 2.3 诊断步骤
 
@@ -83,7 +83,34 @@ iOS 小游戏整机内存红线：低档机 ≤ 1GB、高档机 ≤ 1.4GB。**�
 3. **用微信 wasm 代码分包工具**（wasmCodeSplit，Unity 导出插件）把首包 wasm 压到 3-5MB，子包 7-15MB
 4. **真机 Profiler**：查 `Total Memory / Used Heap`，iOS 低档机 Heap 峰值 ≤ 600MB 比较安全
 
-**来源**：团结引擎 WebGLPlatform 页（2026-11-12 WebFetch）、Unity Manual Memory in Unity Web（2026-11-12 WebFetch）、KB-004 §2.5（wasm 编译失败 → 白屏）、微信 wasm 代码分包工具 WasmSplit.html（WebSearch 摘要）。
+**来源**：团结引擎 WebGLPlatform 页（2026-11-12 WebFetch）、Unity Manual Memory in Unity Web（2026-11-12 WebFetch）、KB-004 §2.5（wasm 编译失败 → 白屏）、微信 wasm 代码分包工具 WasmSplit.html（2026-11-13 WebFetch 正文）。
+
+### 2.4 iOS 15.4 的 wasm 分包解法步骤（HybridCLR 官方推荐方案①）
+
+来源：[HybridCLR Common Errors（中文）](https://www.hybridclr.cn/docs/help/commonerrors)（iOS 15.4 条目，2026-11-13 WebFetch 完整正文，round 17）、[微信 使用代码分包工具](https://developers.weixin.qq.com/minigame/dev/guide/game-engine/unity-webgl-transform/Design/WasmSplit.html)（2026-06-29 更新，2026-11-13 WebFetch 正文）。官方规定。
+
+**适用**：Unity/团结引擎导出的微信小游戏（`game.json` 的 `plugins` 为 `UnityPlugin`）。通用适配线（`WXGameKit`）用「Wasm代码分包V2」，两条线的分包插件不可混用。
+
+操作步骤：
+
+1. 微信开发者工具「扩展」视图安装并启用 `wasmCodeSplit` 分包插件（Unity 专用线）。
+2. 项目初始化 → 启用代码分包。
+3. 真机收集：用开发者工具的「预览」（**不是真机调试**）在 Android、iOS 上分别跑，覆盖启动后最先进入的场景/关卡；新增函数个数稳定后点继续。
+4. 重复收集/生成：每次新增函数趋稳后生成分包；上线前生成 **release** 版。
+5. 上线前检查：首包函数占原始包函数总数 **≥ 30%**（Unity 专用线口径）、新增收集函数个数清零；关注 `wait for func`（普通模式子包过早加载）和 `fetch js`（iOS 高性能按函数拉取）日志，有则继续收集。
+6. 上线后：保留小游戏包，持续关注「新增收集函数个数」，出现新增就重新生成分包并提审。
+
+**结果判据**：分包后 `wasmcode`（首包）约 3–5MB、子包 7–15MB、三者合计 10–25MB；iOS 高性能模式下子包不整体加载，转为按函数粒度按需加载。
+
+**边界**：本步骤解决「单文件 wasm 过大触发 iOS 15.4 WebKit 编译缺陷」。
+
+**方案②（Unity WebGL 官方论坛临时修复，HybridCLR 官方文档转述）**：对 `GenericMetadata::InflateIfNeeded` 函数关闭 clang 优化——
+
+1. 打开 `Library/HybridCLR/LocalIl2CppData-xxx/il2cpp/libil2cpp/metadata/GenericMetadata.cpp`。
+2. 在 `GenericMetadata::InflateIfNeeded` 函数定义前加一行 `#pragma clang optimize off`。
+3. 在该函数结束后加 `#pragma clang optimize on`。
+
+来源：[HybridCLR Common Errors（中文）](https://www.hybridclr.cn/docs/help/commonerrors) iOS 15.4 条目，2026-11-13 WebFetch 取到完整正文（round 17；round 15 的「页面截断」问题本轮未复现）。官方规定。
 
 ---
 
@@ -108,7 +135,7 @@ Unity WebGL 平台在浏览器沙盒里跑 WASM，底层 JS 封装了各种原�
 | **微信 SDK Storage** | 10MB | 同步接口（会阻塞主线程） | `WXApi.SetStorage` / `WXApi.GetStorage` |
 | **Unity PlayerPrefs** | 1MB + 不可靠 | 仅临时调试用 | Unity 原生 API |
 
-**关键**：项目架构里应该有一个 `IPlatformStorage` 抽象层，WebGL/Editor stub 走 PlayerPrefs，微信/抖音走各自 SDK。模板工程 `SaveManager.cs` 是否已有这个抽象——**待读（见模板工程对照）**。
+**关键**：项目架构里应该有一个 `IPlatformStorage` 抽象层，WebGL/Editor stub 走 PlayerPrefs，微信/抖音走各自 SDK。模板工程 `SaveManager.cs` **没有**这个抽象（round 14 全工程 grep 确认，直接用 PlayerPrefs + JsonUtility，见 §7/§9）。
 
 **来源**：Unity Scripting API PlayerPrefs（WebSearch 摘要 + Unity Manual webgl-debugging）、团结引擎 WebGLPlatform 页（JS File System 切断 IndexedDB 同步）、团结引擎 FAQ 存档说明、微信 Unity 适配 QA §8。核对日期 2026-11-12。
 
@@ -325,6 +352,7 @@ build-merged/
 | §2 WASM 体积 | [小游戏启动优化](./小游戏启动优化.md) | §一（启动链路三阶段）、§三（WASM 代码精简 + 分包）、§五（平台评测标准） |
 | §4.3-§4.4 Shader 变体 | 同上 | §二（首包精简：清理 Always Included Shaders、取消 Auto Graphics API） |
 | §5.2 包体硬约束 | [微信与抖音小游戏发布检查](./微信与抖音小游戏发布检查.md) | 包体/分包/资质硬约束 |
+| §4.1-§4.4 Shader 兼容/后处理 | [Unity 小游戏特效实现与性能](./Unity小游戏特效实现与性能.md) | §1（VFX Graph 不可用证据链）、§5（Bloom WebGL1/2 可用性与降级） |
 
 **被反向引用**：KB-004 §5 最后一行 `Unity WebGL 引擎级坑（HybridCLR / IL2CPP / WASM 编译）→ KB-014 待补` 已完成。KB-002 目前没指向 KB-014，后续 round 扫到 KB-002 时补上。
 
@@ -366,10 +394,9 @@ build-merged/
 | HybridCLR 支持平台 | https://www.hybridclr.cn/docs/7.10.0/basic/supportedplatformanduniyversion | WebFetch 直接可达 |
 | HybridCLR 包体影响 | https://www.hybridclr.cn/docs/basic/impactonappsize | WebSearch 摘要命中 |
 | HybridCLR 内存与 GC | https://www.hybridclr.cn/docs/basic/memory | WebSearch 摘要命中 |
-| HybridCLR Common Errors | https://www.hybridclr.cn/en/docs/help/commonerrors | WebSearch 摘要命中（iOS 15.4 BUG） |
-| 微信 unity-webgl-transform DataCDN | https://developers.weixin.qq.com/minigame/dev/guide/game-engine/unity-webgl-transform/Design/DataCDN.html | WebSearch 摘要命中 |
-| 微信 wasm 代码分包 WasmSplit | https://developers.weixin.qq.com/minigame/dev/guide/game-engine/unity-webgl-transform/Design/WasmSplit.html | WebSearch 摘要命中 |
-| 微信 unity-webgl-transform 多包融合 | https://developers.weixin.qq.com/minigame/dev/guide/game-engine/unity-webgl-transform/Design/MultiPackage.html | WebSearch 摘要命中 |
+| HybridCLR Common Errors | https://www.hybridclr.cn/en/docs/help/commonerrors | WebFetch 直接可达但正文被截断（Runtime Errors 段未取到）；iOS 15.4 条目由 WebSearch 摘要命中（2026-11-13） |
+| 微信 wasm 代码分包 WasmSplit（Unity 专用线） | https://developers.weixin.qq.com/minigame/dev/guide/game-engine/unity-webgl-transform/Design/WasmSplit.html | **WebFetch 正文直接可达**（页面更新 2026-06-29，2026-11-13 验证） |
+| 微信 代码分包 V2（通用适配线） | https://developers.weixin.qq.com/minigame/dev/guide/game-engine/WasmSplitV2.html | **WebFetch 正文直接可达**（页面更新 2026-09-22，2026-11-13 验证） |
 | 微信 unity-webgl-transform SDKInstaller | https://developers.weixin.qq.com/minigame/dev/guide/game-engine/unity-webgl-transform/Design/SDKInstaller.html | WebSearch 摘要命中 |
 | 模板工程 MiniGameTemplate 无 HybridCLRSettings.asset | `projects/MiniGameTemplate/` Glob | 项目内 Glob 验证 |
 | unity-webgl-transform 仓库已 403 | github.com/wechat-miniprogram/minigame-unity-webgl-transform | 状态文件 round 1/4 已验证 |
@@ -380,7 +407,7 @@ build-merged/
 
 | 待复核内容 | 条件 | 原因 |
 |-----------|------|------|
-| HybridCLR iOS 15.4 BUG 微信 wasm 分包解法具体步骤 | WebFetch hybridclr.cn Common Errors 正文（**无需浏览器**，来源可靠性表 round 5 已验证该站直接可达；round 14 修正原「有浏览器工具或真机」标注） | hybridclr.cn Common Errors 只写了方向，具体操作需抓正文 |
+| ~~HybridCLR iOS 15.4 官方页面给出的「第二个解决方案」~~ | **已解决（round 17 WebFetch 完整正文）** | 方案②（对 GenericMetadata::InflateIfNeeded 关闭 clang 优化）步骤已写入 §2.4；来源 hybridclr.cn/docs/help/commonerrors 中文页，round 15 的截断问题本轮未复现 |
 | 抖音小游戏 Application API 行为细节 | IAB 浏览器渲染 | 抖音 Unity 适配文档 JS 渲染，WebFetch 只得壳 |
 | ~~模板工程 SaveManager.cs 是否已有 IPlatformStorage 抽象~~ | **已解决（round 14 本地 grep）** | 全工程无 IPlatformStorage；SaveManager 直接用 PlayerPrefs+JsonUtility，与架构条目「不要自己封装平台存储」决策一致 |
 | Unity Input System 在微信小游戏 Accelerometer/Gyroscope 具体行为 | 有真机 | 需真机 setEnableDebug + vConsole 验证 |

@@ -2,7 +2,7 @@
 
 适用：spine-unity 4.2 / 4.3 运行时，团结引擎 / Unity 2022.3（兼容范围 2017.1–6000.3），微信 + 抖音小游戏 WebGL。
 触发：导入 Spine 资产到 Unity、理解 SkeletonDataAsset 结构、判断能否像 Cocos 一样共享缓存。
-核对日期：2026-11-12（Spine 官方 Main Components + Assets 文档、GitHub spine-runtimes 4.2 README）。
+核对日期：2026-11-12（Spine 官方 Main Components + Assets 文档、GitHub spine-runtimes 4.2 README）；2026-11-13 增补 4.3 缓存/多线程机制（GitHub 4.3 源码 + On-Demand Loading 文档）。
 前置：运行时优化见 [Spine 运行时优化](./Spine运行时优化.md)；选型决策见 [UI 动效选型](./UI动效选型.md)。
 
 ## 结论（影响行动的部分）
@@ -195,13 +195,36 @@ spine-unity 4.2：Unity 2017.1 – 6000.3。本项目 Unity 2022.3 / 团结引�
 | Read/Write | 关（除非需 runtime repack） | 省内存 |
 | 材质 Straight Alpha Texture | 关（PMA） | 匹配导出 |
 
-## 七、待核对项
+## 七、spine-unity 4.3 的缓存与多线程机制
+
+来源：[spine-unity On-Demand Loading 文档](https://esotericsoftware.com/spine-unity-on-demand-loading)（4.3 版正文）、GitHub [spine-runtimes 4.3 分支源码](https://github.com/EsotericSoftware/spine-runtimes/tree/4.3/spine-unity/Assets/Spine/Runtime/spine-unity/Components)（SkeletonRenderer.cs / SkeletonRenderer.Common.cs / SkeletonAnimation.cs / SkeletonAnimationBase.cs），核对 2026-11-13。官方规定 + 源码考证。
+
+**结论：4.3 没有新增「共享计算缓存」（仍无 SHARED_CACHE 等效），新增的是「纹理按需加载」与「多线程更新」两项，且多线程在 WebGL 被编译排除。**
+
+| 机制 | 4.3 状态 | 对项目的含义 |
+|------|----------|--------------|
+| 共享骨骼计算缓存 | ❌ 仍无。SkeletonData 由引用同一 SkeletonDataAsset 的所有骨架共享（只读数据），AnimationState 仍逐实例 | 同骨架同动作仍是 N 份 CPU 计算，继续用 Freeze/分帧/减数量（见 [Spine 运行时优化](./Spine运行时优化.md)） |
+| atlas 纹理按需加载 | ✅ 新增扩展 UPM 包：`com.esotericsoftware.spine.on-demand-loading`（基础设施）+ `com.esotericsoftware.spine.addressables`（基于 Addressables 的现成实现） | 默认 SkeletonDataAsset 间接引用全部 atlas 纹理，加载骨架即全部加载；多皮肤/高清图集可用低分辨率占位 + 按需加载高清。依赖 Addressables，与模板现有 ResManager 的适配未验证 |
+| 多线程骨骼/网格更新 | ✅ 4.3 新增 `SkeletonUpdateSystem`，但源码 `#if !SPINE_DISABLE_THREADING && !UNITY_WEBGL` → **WebGL/小游戏不编译该路径**，仍为主线程更新 | 微信/抖音小游戏不要指望多线程更新省 CPU；优化只能从数量、复杂度、冻结、帧率入手 |
+| 组件自动升级 | ✅ `AUTO_UPGRADE_TO_43_COMPONENTS`：编辑器内旧组件在 Awake 时自动升级到 4.3 组件结构 | 从 4.2 升级到 4.3 时先备份工程；自动升级会在 Editor 内改写组件数据 |
+
+**按需加载接入要点**（官方文档步骤，核对 2026-11-13）：
+
+1. 先装 `com.esotericsoftware.spine.on-demand-loading`，再装 `com.esotericsoftware.spine.addressables`（后者依赖前者）。
+2. 把原高清材质纹理标记为 Addressable。
+3. 选中 `SpineAtlasAsset`，右键 Inspector 标题 → `Add Addressables Loader`，生成 `AddressableTextureLoader` 资产。
+4. 正常构建 Addressables 内容；构建 Player 时自动替换为低分辨率占位纹理，运行时按需加载高清。
+5. 编辑器内默认看不到占位效果；要预览时选中 loader 资产执行 `Testing → Assign Placeholders`。
+
+附加纹理（法线贴图等）需把 shader 属性名（如 `_BumpMap`）加入 `Additional Texture Properties`；`SkeletonGraphic` 只用主纹理，附加纹理不适用。
+
+## 八、待核对项
 
 | 内容 | 来源 | 恢复条件 |
 |------|------|----------|
-| spine-unity 4.3 是否有新的共享/缓存机制 | 4.3 changelog / 源码 | 查 GitHub 4.3 分支或安装后看 API |
 | SkeletonGraphic freeze 属性具体 API 名 | spine-unity 源码 | 安装 runtime 后确认（KB-007 已标） |
 | 团结引擎对 spine-unity 的兼容适配 | 团结文档 / 实测 | 装包后验证 |
+| on-demand loading 扩展包与模板 ResManager 的适配成本 | 上述 4.3 文档 + 模板代码 | 装包后评估是否引入 Addressables（未验证） |
 
 ## 相关条目
 

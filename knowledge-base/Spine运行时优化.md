@@ -2,7 +2,7 @@
 
 适用：spine-unity 运行时（SkeletonAnimation / SkeletonGraphic），团结引擎 / Unity 2022.3，微信 + 抖音小游戏 WebGL。
 触发：同屏 Spine 骨架多导致 CPU 卡顿、DrawCall 过高、实例化掉帧。
-核对日期：2026-11-12（Spine 官方 FAQ + Rendering 文档、UWA 实战帖、团结 GpuSkinning 手册）。
+核对日期：2026-11-12（Spine 官方 FAQ + Rendering 文档、UWA 实战帖、团结 GpuSkinning 手册）；2026-11-13 增补 4.3 手动更新/UpdateMode API（GitHub 4.3 源码）；round 17 核实 UpdateTiming/UpdateMode 枚举完整定义（ISkeletonAnimation.cs，确认 ManualUpdate/Nothing 档位）。
 前置：选型决策（要不要用 Spine）见 [UI 动效选型](./UI动效选型.md)；本条目只讲「决定用 Spine 后怎么优化」。
 
 ## 结论（影响行动的部分）
@@ -30,28 +30,43 @@ skeletonGraphic.freeze = true;   // 停止更新
 skeletonGraphic.freeze = false;  // 恢复更新
 ```
 
-### 1.2 round-robin 分帧更新（示例，待论坛原文核实）
+### 1.2 round-robin 分帧更新
 
-来源线索：[Spine 官方论坛：性能优化](https://zh.esotericsoftware.com/forum/d/25472-spine性能优化)（JS 渲染，本轮未取到正文，待浏览器核实）。
+来源线索：[Spine 官方论坛：性能优化](https://zh.esotericsoftware.com/forum/d/25472-spine性能优化)（JS 渲染，论坛原文未取到）；API 以 GitHub spine-runtimes 4.3 源码为准：[SkeletonAnimationBase.cs](https://github.com/EsotericSoftware/spine-runtimes/blob/4.3/spine-unity/Assets/Spine/Runtime/spine-unity/Components/Base/SkeletonAnimationBase.cs)（更新回调）+ [ISkeletonAnimation.cs](https://github.com/EsotericSoftware/spine-runtimes/blob/4.3/spine-unity/Assets/Spine/Runtime/spine-unity/ISkeletonAnimation.cs)（UpdateTiming/UpdateMode 枚举定义，round 17 定位），核对 2026-11-13。源码考证 + 示例。
 
 **原理**：N 个骨架不必每帧都更新。将骨架分组，每帧只更新其中一组，N 帧轮完一圈。视觉帧率降为 1/N，但 CPU 开销降为 1/N。适用于远处/次要/装饰性骨架。
 
+**4.3 中可用的手动更新 API**（源码核实）：
+
+| API | 位置 | 行为 |
+|-----|------|------|
+| `public virtual void UpdateOncePerFrame(float deltaTime)` | `SkeletonAnimationBase` | 同一帧内重复调用只会生效一次（`frameOfLastUpdate == Time.frameCount` 守卫），可手动驱动单帧更新 |
+| `public UpdateMode UpdateMode { get; set; }` | `SkeletonRenderer` / `SkeletonAnimationBase` | 枚举完整 5 值（`ISkeletonAnimation.cs` 定义，round 17 核实）：`Nothing = 0`（停止动画工作）、`OnlyAnimationStatus`、`EverythingExceptMesh = 2`、`OnlyEventTimelines = 4`、`FullUpdate` |
+| `public UpdateMode UpdateWhenInvisible` | `SkeletonRenderer` | MeshRenderer 不可见期间的更新模式，重新可见时自动重置为 `FullUpdate` |
+| `public UpdateTiming UpdateTiming { get; set; }` | `SkeletonAnimationBase` | 控制自动更新时机，枚举完整 4 值（`ISkeletonAnimation.cs` 定义，round 17 核实）：**`ManualUpdate = 0`（关闭自动更新，改手动驱动）**、`InUpdate`、`InFixedUpdate`、`InLateUpdate` |
+| `public bool IsUpdatedExternally` | `SkeletonAnimationBase` | 交给外部系统更新；但 4.3 源码 `#if !SPINE_DISABLE_THREADING && !UNITY_WEBGL` → **WebGL/小游戏不启用多线程更新路径** |
+
 ```csharp
-// 示例：round-robin 分帧（非官方 API，需按 spine-unity 版本适配）
-// 前提：SkeletonAnimation 支持手动更新模式
+// 示例：round-robin 分帧（4.3 API；UpdateTiming.ManualUpdate 关闭自动更新，round 17 源码核实）
 public class SpineRoundRobin : MonoBehaviour
 {
-    public SkeletonAnimation[] skeletons;
-    public int groupCount = 4; // 分 4 组，每骨架 4 帧更新一次
+    public SkeletonAnimation[] skeletons; // SkeletonGraphic 走各自更新实现，API 未在本轮核实
+    public int groupCount = 4;
     private int frame;
+
+    void Start()
+    {
+        // 切手动档：组件不再在 Update/FixedUpdate/LateUpdate 自动更新
+        foreach (var s in skeletons) s.UpdateTiming = UpdateTiming.ManualUpdate;
+    }
 
     void Update()
     {
         int group = frame % groupCount;
         for (int i = group; i < skeletons.Length; i += groupCount)
         {
-            // 手动驱动更新（需确认组件支持 ManualUpdate 或等效 API）
-            skeletons[i].Update(Time.deltaTime * groupCount);
+            // 每组每帧推进 N 倍时长，保证动画速度不变
+            skeletons[i].UpdateOncePerFrame(Time.deltaTime * groupCount);
         }
         frame++;
     }
@@ -63,7 +78,7 @@ public class SpineRoundRobin : MonoBehaviour
 - 骨架动作快/主角 → 不适用（会看到卡顿）
 - 与 Freeze 组合：屏幕外 Freeze，屏幕内次要骨架分帧
 
-**待核实**：spine-unity 是否暴露 ManualUpdate / UpdateMode 属性；论坛帖中的具体实现方式。恢复条件：浏览器渲染论坛帖，或查 spine-unity 源码 `SkeletonAnimation.cs`。
+**限制与修正（round 17）**：`UpdateTiming.ManualUpdate = 0` 就是「关闭自动更新」的公开档位——round 15「手动档未核实、round-robin 可能与组件自更新叠加」的疑虑已解除：设为 ManualUpdate 后组件不再自动更新，由 `UpdateOncePerFrame`（帧内幂等）手动驱动。论坛原帖实现仍未取到正文（需浏览器，总表 A22）。
 
 ### 1.3 简单动画不用 Spine
 
@@ -220,7 +235,7 @@ Spine 卡顿？
 | 内容 | 来源 | 恢复条件 |
 |------|------|----------|
 | round-robin 论坛原文实现 | zh.esotericsoftware.com/forum/d/25472 | IAB 浏览器渲染 |
-| spine-unity ManualUpdate / UpdateMode API | spine-unity 源码或 Main Components 文档 | 查 GitHub spine-runtimes 或安装 runtime 后看 API |
+| ~~`UpdateTiming` 是否有手动/关闭自动更新的档位~~ | **已解决（round 17）**：枚举定义在 `ISkeletonAnimation.cs`（非独立文件），`ManualUpdate = 0` 即手动档；`UpdateMode` 完整 5 值含 `Nothing = 0` | GitHub 4.3 源码 ISkeletonAnimation.cs 全文核实 |
 | GPU 骨骼动画 WebGL 真机性能 | efunstudio.cn/web-demo | 真机实测 |
 | 少量动画移动端性能差（atlas 用法） | zh.esotericsoftware.com/forum/d/17526 | IAB 浏览器渲染 |
 
@@ -232,3 +247,4 @@ Spine 卡顿？
 - [Unity 真机 Profiling 与内存分析](./Unity真机Profiling与内存分析.md) — CPU 模块定位 SkeletonGraphic.Update 耗时
 - [小游戏启动优化](./小游戏启动优化.md) — 首包精简（Spine 资产不进首包）
 - [Spine Unity 资产工作流](./SpineUnity资产工作流.md) — 导入流程、SkeletonDataAsset 结构、无 SHARED_CACHE 等效、PMA 设置、版本匹配
+- [Unity 小游戏特效实现与性能](./Unity小游戏特效实现与性能.md) — 特效选型三分法（节点动画/Spine/粒子）：大量随机短命小元素用 Particle System 比 N 个 Spine 便宜

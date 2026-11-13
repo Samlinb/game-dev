@@ -386,3 +386,4 @@ Glob 扫描 `projects/MiniGameTemplate/**` 未发现以下配置文件：
 - [小游戏分辨率适配与降级策略](./小游戏分辨率适配与降级策略.md) — 低端机降级手段（帧率/分辨率/Shader 裁剪）、Canvas Scaler 选型。
 - [Unity 真机 Profiling 与内存分析](./Unity真机Profiling与内存分析.md) — DrawCall 测量工具、GPU 耗时定位。
 - [小游戏启动优化](./小游戏启动优化.md) — Shader 变体裁剪与首包精简。
+- [Unity 小游戏特效实现与性能](./Unity小游戏特效实现与性能.md) — 粒子/拖尾/发光/溶解的实现选型与特效专属预算（OverDraw/变体通用规则在本条目）。

@@ -84,3 +84,4 @@ Spine 支持远程加载三件套（`assetManager.loadAny` + `loadRemote` 组装
 - [Unity uGUI 美术资源与 AI 拼接标准](<./Unity uGUI 美术资源与 AI 拼接标准.md>) —— 项目 UI 素材规范。
 - [游戏开发经验与优化资源汇总](<./游戏开发经验与优化资源汇总.md>) —— Spine 优化来源导航（官方论坛、10 万 Spine 同屏 GPU Skinning 方案等）。
 - [Spine 运行时优化](./Spine运行时优化.md) —— 决定用 Spine 后的优化实操：Freeze/分帧/atlas 共享/对象池/GPU 动画/SkeletonGraphic 约束。
+- [Unity 小游戏特效实现与性能](./Unity小游戏特效实现与性能.md) —— 粒子/拖尾/发光/溶解特效的选型与预算（Unity WebGL 侧；简单 UI 动效仍按本条目决策树优先节点动画）。

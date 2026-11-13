@@ -21,10 +21,11 @@
 | 给用户提供免广告权益不损失收入 / 设计免广告券 / 插屏降频与点位改造 | [小游戏免广告方案与IAA变现优化](./小游戏免广告方案与IAA变现优化.md) | 微信+抖音 IAA；机制+频控+风控清单；eCPM 倍数为经验值 |
 | Unity WebGL 小游戏坑点 / HybridCLR / WASM 编译 / API 行为差异 | [Unity WebGL 小游戏特有技术坑](<./Unity WebGL 小游戏特有技术坑.md>) | 微信+抖音 团结引擎；含 IL2CPP vs HybridCLR 选型、PlayerPrefs/FileIO/System.Net 差异、Shader 兼容、unity-webgl-transform 链路 |
 | 降低 DrawCall / 合批优化 / OverDraw 治理 / 图集策略 / 纹理压缩 | [DrawCall 与渲染批处理优化](./DrawCall与渲染批处理优化.md) | 微信+抖音 团结引擎 WebGL；含 Static Batching、SRP Batcher WebGL 可用性澄清、GPU Instancing 互斥、Shader 变体裁剪、ASTC/ETC2 覆盖、Canvas 合批规则 |
+| 做粒子/拖尾/发光/溶解特效 / 选特效方案 / 特效卡顿定预算 | [Unity 小游戏特效实现与性能](./Unity小游戏特效实现与性能.md) | 微信+抖音 团结引擎 WebGL；VFX Graph 不可用证据链、Particle System CPU 预算、TrailRenderer、Bloom WebGL2 可用性与降级、特效 OverDraw 排查 |
 | 接入平台 SDK / 开通广告流量主 / 能力自查 / 真机广告验收 | [平台能力开通与接入检查](./平台能力开通与接入检查.md) | 微信+抖音 团结引擎；SDK 安装、能力矩阵、端到端 checklist、广告三路径验收 |
 | UI 被刘海遮挡 / 屏幕比例布局错乱 / 低端机降帧降分辨率 | [小游戏分辨率适配与降级策略](./小游戏分辨率适配与降级策略.md) | 微信+抖音 团结引擎 uGUI；Canvas Scaler 选型、SafeArea、胶囊避让、设备分档降级 |
 | Spine 同屏卡顿 / DrawCall 高 / 实例化掉帧 / 分帧更新 / atlas 合并 | [Spine 运行时优化](./Spine运行时优化.md) | spine-unity 微信+抖音 WebGL；Freeze/round-robin/atlas 共享/对象池/GPU 动画/SkeletonGraphic 约束 |
-| 导入 Spine 资产到 Unity / 理解 SkeletonDataAsset / PMA 设置 / 版本匹配 | [Spine Unity 资产工作流](./SpineUnity资产工作流.md) | spine-unity 4.2/4.3；导入流程、无 SHARED_CACHE 等效、PMA vs Straight、组件选择 |
+| 导入 Spine 资产到 Unity / 理解 SkeletonDataAsset / PMA 设置 / 版本匹配 / 4.3 缓存与按需加载 | [Spine Unity 资产工作流](./SpineUnity资产工作流.md) | spine-unity 4.2/4.3；导入流程、无 SHARED_CACHE 等效、PMA vs Straight、4.3 on-demand 纹理加载与多线程（WebGL 不启用）、组件选择 |
 | 判断项目范围是否过大 / 决定砍什么功能 / 独立项目立项自查 | [独立项目范围管理](./独立项目范围管理.md) | 方法论；overscoping 信号清单、核心循环裁剪判据、PC 来源与小游戏语境边界 |
 | 查各主题的外部资料来源 | [游戏开发经验与优化资源汇总](<./游戏开发经验与优化资源汇总.md>) | 来源导航 |
 
