@@ -5,6 +5,8 @@
 
 ## 目录结构
 
+> 仓库本体是代码骨架（无 ProjectSettings、无 .asset/.unity 资产）。下图是跑完菜单 `MiniGame → 一键初始化` 后的完整结构；`Data/`（含 AdConfig.asset 等配置）、`Scenes/`（Boot/Game）由 ProjectBootstrap 编辑器菜单生成（round 13 复核确认）。
+
 ```
 Assets/
   _Project/            # 自己的全部内容
@@ -163,3 +165,9 @@ Unity 异步加载场景时 `progress` 到 **0.9 就停住**(等待激活许可)
 - AssetBundle 在微信/抖音转换 SDK 下的网络层适配(UnityWebRequest 映射、WXAssetBundle 直读)未实测,接 SDK 后按官方文档验证。
 - 两个官方 SDK 的 C# API 具体签名未在本工程实测:模板用 `#if WECHAT_SDK / DOUYIN_SDK` 隔离 + TODO 占位,装 SDK 后按编译报错对齐即可,不影响默认工程编译。
 - StarkSDK 与团结引擎内置插件二选一的取舍(是否功能重叠)需装包后确认。
+
+## 相关条目
+
+- [平台能力开通与接入检查](./平台能力开通与接入检查.md) — SDK 安装步骤、能力矩阵、端到端 checklist、广告真机验收。
+- [小游戏资质与类目](./小游戏资质与类目.md) — 开通前置：IAA/IAP 分流、备案、类目。
+- [微信与抖音小游戏发布检查](./微信与抖音小游戏发布检查.md) — 包体/分包硬约束、发布流程。
