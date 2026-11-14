@@ -303,9 +303,9 @@ Unity WebGL 要跑到微信/抖音小游戏壳里，必须经过「Unity 导出 
 
 ### 5.2 首包/分包硬约束
 
-**微信**：总包体 ≤ 20MB（game.js + game.json + unitySDK + wasmcode + Build + wasmcode1 + ... + wasmcodeN 全算）。Brotli 压缩后的 wasmcode 典型 3-5MB，wasmcode1...N 典型 7-15MB，总包 10-25MB 区间。
+**微信**：总包体 ≤ 30MB（game.js + game.json + unitySDK + wasmcode + Build + wasmcode1 + ... + wasmcodeN 全算；现行官方，[微信与抖音小游戏发布检查](./微信与抖音小游戏发布检查.md)两页互证，**旧记 20MB 已过时**，round 61 审计修正）。Brotli 压缩后的 wasmcode 典型 3-5MB，wasmcode1...N 典型 7-15MB，总包 10-25MB 区间。
 
-- 如果 wasmcode + Build（首资源包）< 20MB：可以**包内加载**（全部进微信游戏包体）
+- 如果 wasmcode + Build（首资源包）在总包限（30MB）内：可以**包内加载**（全部进微信游戏包体）
 - 如果超了：必须**CDN 加载**（unity-webgl-transform 导出面板的「游戏资源 CDN」填对 URL，末尾 `/` 不能少）
 - Unity 包体里的 `.data` / `.wasm` / `.framework.js` 必须走 **CDN + 正确的 Content-Encoding 头**（KB-004 §2.1-§2.2 详细步骤）
 

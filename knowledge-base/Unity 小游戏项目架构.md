@@ -173,4 +173,7 @@ Unity 异步加载场景时 `progress` 到 **0.9 就停住**(等待激活许可)
 - [平台能力开通与接入检查](./平台能力开通与接入检查.md) — SDK 安装步骤、能力矩阵、端到端 checklist、广告真机验收。
 - [小游戏资质与类目](./小游戏资质与类目.md) — 开通前置：IAA/IAP 分流、备案、类目。
 - [微信与抖音小游戏发布检查](./微信与抖音小游戏发布检查.md) — 包体/分包硬约束、发布流程。
+- [Addressables 按需加载与 WXAssetBundle](./Addressables按需加载与WXAssetBundle.md) — Addressables 远程路线操作（AssetReference/WXAssetBundleProvider/消冗余）。
+- [AssetBundle 按需加载与内存优化](./AssetBundle按需加载与内存优化.md) — AB 远程路线操作（打包参数/WXAssetBundle 原理/内存优化）。
+- [微信构建模板定制](./微信构建模板定制.md) — minigame 导出产物定制（template 覆盖/JSON 合并/构建钩子）。
 - [小游戏音频管理与音视频适配](./小游戏音频管理与音视频适配.md) — AudioManager 实现、UnityAudio 适配、音频格式与 iOS 音频坑（音频偏好决策见本条目「音频偏好为什么不进游戏存档」）。

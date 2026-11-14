@@ -342,3 +342,4 @@ Bloom 是 URP Volume Override（启用路径：Camera 勾 Post Processing + Volu
 - [Unity 真机 Profiling 与内存分析](./Unity真机Profiling与内存分析.md) — 特效 CPU/GPU 耗时测量。
 - [真机白屏与资源加载失败排查](./真机白屏与资源加载失败排查.md) — 特效纹理格式/Shader 编译异常排查。
 - [外部库选型评估](./外部库选型评估.md) — QianMo 仓库许可证风险评估流程。
+- [游戏特效案例与可复用资源](./游戏特效案例与可复用资源.md) — 四类制作场景方案映射、命中特效拆解、可复用工具（ParticleEffectProfiler/Preview）与许可证。
