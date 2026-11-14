@@ -20,7 +20,7 @@
 
 **纯 IL2CPP 是 Unity WebGL 的唯一 Scripting Backend**——Mono（非 IL2CPP）在团结引擎小游戏链路里**直接 Loading 卡死**（KB-004 §2.4），原因是 Mono 需要 `blazor.boot.json` 配置文件，而微信 unity-webgl-transform 工具链不产出它。
 
-**HybridCLR 官方声称支持 WebGL + 微信 + 抖音小游戏**（来源：HybridCLR 支持平台表，核对日期 2026-11-12）。但注意以下硬约束：
+**HybridCLR 官方支持 WebGL + 微信 + 抖音小游戏**（v4.0.0 起消除平台不兼容代码，支持 il2cpp 可运行的全部平台；来源：HybridCLR 支持平台表，核对 2026-11-12，round 50 复核 2026-11-14）。支持 Unity LTS 2019.4/2020.3/2021.3/2022.3（本项目 2022.3 在范围内）+ 测试版 2023.2/6000.x。但注意以下硬约束：
 
 | 约束 | 详情 | 来源 |
 |------|------|------|
@@ -28,6 +28,8 @@
 | 额外包体 | HybridCLR 运行时：196KB + MethodBridge.cpp * 0.049（典型项目约 +250KB~500KB） | hybridclr.cn/docs/basic/impactonappsize |
 | 热更 dll 加载内存 | 社区版：dll 大小 × 4.7；商业化版：dll 大小 × 2.9 | hybridclr.cn/docs/basic/memory |
 | iOS 15.4 BUG | iOS 15.4 系统上 HybridCLR 小游戏报 `Not implemented` / `Class::FromIl2CppType` 卡死 | hybridclr.cn Common Errors；解法：微信 wasm 代码分包工具 |
+| **团结引擎 metadata slim** | **团结 1.1.x 的 metadata index slim 优化会破坏微信小游戏上的 HybridCLR；团结 1.2.0+ 提供关闭开关**——本项目用团结引擎 + HybridCLR 时须关闭该优化 | hybridclr.cn 支持平台页（7.10.0，round 50 复核 2026-11-14） |
+| AOT 泛型元数据 | 微信转换工具默认 IL2CPP Code Generation = Faster(Smaller) builds，无补充元数据会阻断 AOT 泛型访问；商业版（2021.3.x 起）支持完全泛型共享可免补充 | 同上 |
 
 ### 1.3 什么时候选哪个
 
@@ -44,7 +46,7 @@
 
 **不选 Mono（非 IL2CPP）**：团结引擎 unity-webgl-transform 链路根本不支持。
 
-**来源**：HybridCLR 官方支持平台（2026-11-12 WebFetch）、HybridCLR 包体影响（同日期）、KB-004 §2.4（Scripting Backend 非 IL2CPP Loading 卡死）、团结引擎 WebGLPlatform 页（纯 IL2CPP 是唯一官方后端）、模板工程 MiniGameTemplate 无 HybridCLRSettings.asset（项目实测 Glob）。
+**来源**：HybridCLR 官方支持平台（2026-11-12 WebFetch，round 50 复核 2026-11-14 补团结 metadata slim/AOT 泛型约束）、HybridCLR 包体影响（同日期）、KB-004 §2.4（Scripting Backend 非 IL2CPP Loading 卡死）、团结引擎 WebGLPlatform 页（纯 IL2CPP 是唯一官方后端）、模板工程 MiniGameTemplate 无 HybridCLRSettings.asset（项目实测 Glob）。
 
 ---
 
@@ -191,10 +193,12 @@ Unity WebGL 平台在浏览器沙盒里跑 WASM，底层 JS 封装了各种原�
 
 **替代**：
 - HTTP 请求 → **UnityWebRequest**（底层浏览器 Fetch API，自动走 CORS）
-- TCP → **WebSocket**（UnityWebSocket 社区库，底层浏览器 WebSocket API）
+- TCP → **WebSocket**（UnityWebSocket 社区库）或微信 **TCPSocket**（基础库 ≥3.1.1）；UDP → 微信 **UDPSocket**
 - 小游戏环境下 → UnityWebRequest 会被 unity-webgl-transform 工具自动替换成 `wx.request` / `tt.request`
 
 **关键**：UnityWebRequest 必须用协程 `yield return uwr.SendWebRequest()`，**不能 while(!isDone) 阻塞**——WebGL 单线程，阻塞会卡死游戏（团结引擎明确给出了反例代码）。
+
+**操作细节**（安全域名配置、真机 vs 工具校验差异、TCP/UDP/WebSocket 接入、粘包）见 [小游戏网络通信与安全域名](./小游戏网络通信与安全域名.md)（Design/UsingNetworking.md 镜像核实 2026-11-13）。
 
 **来源**：Unity Manual Web networking（2026-11-12 WebFetch，明确列出不支持的 .NET 类）、团结引擎 WebGLPlatform 页网络节（反例代码）、微信 Unity 适配 QA Unity WebGL §1-§2。
 

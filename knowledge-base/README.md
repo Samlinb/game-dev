@@ -7,6 +7,7 @@
 | 写新功能前决定要不要先找现成实现 | [写新功能前先找现成实现](./写新功能前先找现成实现.md) | 通用；含 GitHub 搜索语法与例外边界 |
 | 判断一个外部库能不能接入 | [外部库选型评估](./外部库选型评估.md) | 通用；含许可证对比与供应链风险 |
 | 用 AI 设计或还原 uGUI 界面并交付 Prefab | [Unity uGUI 美术资源与 AI 拼接标准](<./Unity uGUI 美术资源与 AI 拼接标准.md>) | Unity uGUI |
+| 把效果图或切图交付为 Unity / Cocos Prefab，检查改稿差异和按钮 | [游戏界面从设计稿到 Prefab 交付](./游戏界面从设计稿到Prefab交付.md) | 仓库 UI Workflow；预检、导入、验收与版本切换 |
 | Tooltip、下拉菜单被公共资源栏挡住 / 浮层点击穿透 | [Unity uGUI 浮层遮挡与点击穿透](<./Unity uGUI 浮层遮挡与点击穿透.md>) | Unity 2021.3 uGUI；Canvas 排序、射线命中与 Ninja Boot 回归 |
 | 从零搭 Unity 小游戏工程结构(微信/抖音双平台) | [Unity 小游戏项目架构](<./Unity 小游戏项目架构.md>) | 团结引擎/Unity WebGL;含模板工程 projects/MiniGameTemplate |
 | 给高频创建销毁的节点接入对象池 | [对象池接入与复用](./对象池接入与复用.md) | Cocos Creator 3.6–3.8；含 Unity 模板 PrefabPool 对照 |
@@ -20,8 +21,10 @@
 | 真机白屏/黑屏/资源加载失败/wasm 编译报错 | [真机白屏与资源加载失败排查](./真机白屏与资源加载失败排查.md) | 微信+抖音 Unity WebGL；含 vConsole 开启、压缩头、CDN、Shader、PlayerPref |
 | 给用户提供免广告权益不损失收入 / 设计免广告券 / 插屏降频与点位改造 | [小游戏免广告方案与IAA变现优化](./小游戏免广告方案与IAA变现优化.md) | 微信+抖音 IAA；机制+频控+风控清单；eCPM 倍数为经验值 |
 | Unity WebGL 小游戏坑点 / HybridCLR / WASM 编译 / API 行为差异 | [Unity WebGL 小游戏特有技术坑](<./Unity WebGL 小游戏特有技术坑.md>) | 微信+抖音 团结引擎；含 IL2CPP vs HybridCLR 选型、PlayerPrefs/FileIO/System.Net 差异、Shader 兼容、unity-webgl-transform 链路 |
+| 配服务器安全域名 / 真机网络请求异常（工具正常真机失败）/ 接 HTTP/TCP/WebSocket/UDP | [小游戏网络通信与安全域名](./小游戏网络通信与安全域名.md) | 微信+抖音 团结引擎 WebGL；安全域名配置、真机 vs 工具校验差异、TCPSocket/UDPSocket/UnityWebSocket、粘包 |
 | 降低 DrawCall / 合批优化 / OverDraw 治理 / 图集策略 / 纹理压缩 | [DrawCall 与渲染批处理优化](./DrawCall与渲染批处理优化.md) | 微信+抖音 团结引擎 WebGL；含 Static Batching、SRP Batcher WebGL 可用性澄清、GPU Instancing 互斥、Shader 变体裁剪、ASTC/ETC2 覆盖、Canvas 合批规则 |
 | 做粒子/拖尾/发光/溶解特效 / 选特效方案 / 特效卡顿定预算 | [Unity 小游戏特效实现与性能](./Unity小游戏特效实现与性能.md) | 微信+抖音 团结引擎 WebGL；VFX Graph 不可用证据链、Particle System CPU 预算、TrailRenderer、Bloom WebGL2 可用性与降级、特效 OverDraw 排查 |
+| 做 BGM/音效播放与开关 / 选音频方案格式 / 音频不响卡顿循环异常 / 接视频 | [小游戏音频管理与音视频适配](./小游戏音频管理与音视频适配.md) | 微信+抖音 团结引擎 WebGL；UnityAudio 自动适配（长 InnerAudio/短 WebAudio）、mp3/aac、模板 AudioManager、iOS 音频坑、VideoPlayer 版本 |
 | 接入平台 SDK / 开通广告流量主 / 能力自查 / 真机广告验收 | [平台能力开通与接入检查](./平台能力开通与接入检查.md) | 微信+抖音 团结引擎；SDK 安装、能力矩阵、端到端 checklist、广告三路径验收 |
 | UI 被刘海遮挡 / 屏幕比例布局错乱 / 低端机降帧降分辨率 | [小游戏分辨率适配与降级策略](./小游戏分辨率适配与降级策略.md) | 微信+抖音 团结引擎 uGUI；Canvas Scaler 选型、SafeArea、胶囊避让、设备分档降级 |
 | Spine 同屏卡顿 / DrawCall 高 / 实例化掉帧 / 分帧更新 / atlas 合并 | [Spine 运行时优化](./Spine运行时优化.md) | spine-unity 微信+抖音 WebGL；Freeze/round-robin/atlas 共享/对象池/GPU 动画/SkeletonGraphic 约束 |

@@ -222,7 +222,7 @@ spine-unity 4.2：Unity 2017.1 – 6000.3。本项目 Unity 2022.3 / 团结引�
 
 | 内容 | 来源 | 恢复条件 |
 |------|------|----------|
-| SkeletonGraphic freeze 属性具体 API 名 | spine-unity 源码 | 安装 runtime 后确认（KB-007 已标） |
+| ~~SkeletonGraphic freeze 属性具体 API 名~~ | **已解决（round 34 官方文档，round 36 审计确认）** | `freeze` bool 属性（官方 main-components：「set true 不再更新」），仅 SkeletonGraphic；见 [Spine 运行时优化](./Spine运行时优化.md) §1.1 |
 | 团结引擎对 spine-unity 的兼容适配 | 团结文档 / 实测 | 装包后验证 |
 | on-demand loading 扩展包与模板 ResManager 的适配成本 | 上述 4.3 文档 + 模板代码 | 装包后评估是否引入 Addressables（未验证） |
 

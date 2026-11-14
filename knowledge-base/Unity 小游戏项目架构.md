@@ -64,6 +64,8 @@ Unity Project 窗口按字母排序,`_` 排最前;自己的内容置顶一眼可
 
 实现切换用编译符号:`WECHAT_SDK` / `DOUYIN_SDK`(PlayerSettings 的 Scripting Define Symbols,一个构建目标只定义一个),编辑器恒走 Stub——不装 SDK 也能在编辑器跑通全部业务流程,接 SDK 的工作被压缩到「填空三个实现类」。
 
+**现成工具参考**（D 方向挖掘 round 47）：[WanNengDeXiangWang/UnityMinigameSDKTool](https://github.com/WanNengDeXiangWang/UnityMinigameSDKTool)（0★，**无 LICENSE**，pushed 2026-10-29）是编辑器工具：同工程保留微信+抖音 SDK，用三模式宏 `WECHAT`/`BYTEDANCE`/`WEB_BROWSER`（互斥）+ SDK 存在标记 `MGF_WECHAT_SDK`/`MGF_DOUYIN_SDK`（检测目录有 SDK ≠ 启用，微信代码需 `WECHAT && MGF_WECHAT_SDK` 同时成立）+ 给 SDK 的 `.asmdef`/插件导入加平台编译约束，SDK 导入/更新/删除后自动补齐隔离。切换模式只调编译环境，不改构建目标/模板/压缩/场景。比本项目单纯 `WECHAT_SDK`/`DOUYIN_SDK` 宏多了「普通网页 WebGL 模式」与 **asmdef 级隔离**（防 SDK 程序集/JS 桥接混入网页包）。**仅作思路参考**：无 LICENSE 代码不可直接复用（默认保留所有权利）；面向标准 Unity 2022.3，团结引擎兼容性未验证（round 28 已知抖音 SDK asmdef 与团结冲突）；接入前走 [外部库选型评估](./外部库选型评估.md)。
+
 ### 激励视频为什么必须三件事(onClose 判 isEnded / onError 重建 / show 失败 load 重试)
 
 1. **onClose 判 `isEnded`**:不判 = 用户点关闭也拿奖励,广告变现直接失效,还会触发平台审核风控。
@@ -171,3 +173,4 @@ Unity 异步加载场景时 `progress` 到 **0.9 就停住**(等待激活许可)
 - [平台能力开通与接入检查](./平台能力开通与接入检查.md) — SDK 安装步骤、能力矩阵、端到端 checklist、广告真机验收。
 - [小游戏资质与类目](./小游戏资质与类目.md) — 开通前置：IAA/IAP 分流、备案、类目。
 - [微信与抖音小游戏发布检查](./微信与抖音小游戏发布检查.md) — 包体/分包硬约束、发布流程。
+- [小游戏音频管理与音视频适配](./小游戏音频管理与音视频适配.md) — AudioManager 实现、UnityAudio 适配、音频格式与 iOS 音频坑（音频偏好决策见本条目「音频偏好为什么不进游戏存档」）。

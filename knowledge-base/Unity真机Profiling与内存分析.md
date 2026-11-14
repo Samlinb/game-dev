@@ -1,6 +1,6 @@
 # Unity 真机 Profiling 与内存分析
 
-适用：团结引擎（Tuanjie 1.x，基于 Unity 2022.3）/ Unity 2021–2022 的 WebGL 构建，转微信、抖音小游戏；也适用于标准 Unity WebGL/原生真机。触发条件：出包前性能验收、真机卡顿/掉帧、内存上涨或 iOS 闪退、GC 尖峰定位。核对日期：2026-11-12（Unity 手册按 6000.6 current 版核对，Profiler 工作流跨版本稳定；团结手册按 1.11 版核对）。
+适用：团结引擎（Tuanjie 1.x，基于 Unity 2022.3）/ Unity 2021–2022 的 WebGL 构建，转微信、抖音小游戏；也适用于标准 Unity WebGL/原生真机。触发条件：出包前性能验收、真机卡顿/掉帧、内存上涨或 iOS 闪退、GC 尖峰定位。核对日期：2026-11-12（Unity 手册按 6000.6 current 版核对，Profiler 工作流跨版本稳定；团结手册按 1.11 版核对）；2026-11-13 round 45 经镜像核实微信高精度时间（见 §2.7）。
 
 > 本条目是 Unity 侧 Profiling 的主条目。Cocos 侧的内存排查见 [Cocos 场景切换后内存排查](./Cocos场景切换后内存排查.md)；工程结构与资源/池化系统见 [Unity 小游戏项目架构](<./Unity 小游戏项目架构.md>)；包体/资质约束见 [微信与抖音小游戏发布检查](./微信与抖音小游戏发布检查.md)。
 
@@ -90,6 +90,21 @@
 - **Memory Profiler 包在小游戏平台可用**：打 development 包 + Autoconnect Profiler，启动连上 Editor 后抓内存帧分析冗余。（官方，[团结内存优化指引](https://docs.unity.cn/cn/tuanjiemanual/Manual/MemoryOptimizationOverview.html)，核对 2026-11-12）
 - **Connect App（小游戏宿主调试运行）**：构建上传后在「上传记录」点查看 → Connect App 扫码运行（下载 `developer.unity.cn/connectApp/download`）。菜单 `开发调试 > 打开调试`：左上角实时帧率/内存/CPU，右下角 VConsole 按钮；`打开性能监控面板`；`Request Force GC` 强制 v8 GC。注意此页属 Unity 小游戏宿主（MiniHost），微信/抖音真机调试入口见各自平台文档。（官方，[团结调试运行](https://docs.unity.cn/cn/tuanjiemanual/Manual/MiniHostRunAndDebug.html)，核对 2026-11-12）
 
+### 2.7 高精度时间（性能检测精度，微信特有）
+
+来源：微信适配文档 Design/HighPreciseTime.md（官方文档内容·镜像取得 BlackTom900131/minigame-unity-webgl-transform，gh api 核实 2026-11-13；原页待浏览器复核）。
+
+**浏览器时间精度限制**（影响性能测量准确性）：
+- `Date.now()`：整型毫秒时间戳，精度固定 **1ms**。
+- `performance.now()`：理论浮点微秒级，实际受浏览器限制——**Chrome 0.1ms（100μs）、Safari 1ms**。
+- 端游/手游 APP 普遍微秒级；浏览器精度限制制约小游戏性能优化（测帧耗时/尖峰时注意精度下限）。
+
+**微信高精度时间**（基础库 ≥3.5.4，仅 **Android + iOS 普通模式**，其他模式仍毫秒级）：默认关闭，需同时满足 ①勾选 `Development Build` ②启用 `Enable Perf Analysis` 导出选项。配套**性能深度分析工具**（DeepProfileTool）：集成于微信小游戏 Unity 官方插件，聚焦执行效率/内存管理/渲染效果瓶颈定位（镜像 DeepProfileTool.md 核实 2026-11-13）；详细说明书与实战案例在 doc.weixin.qq.com（JS 渲染需浏览器复核，原 wechat-miniprogram.github.io 页已封）。
+
+**手动强制开启**（改 `weapp-adapter.js`）：定位 `const clientPerfAdapter = Object.assign` 段，删除 `isDevelopmentBuild` 与 `isProfilingBuild` 两个条件判断（`wx.getPerformance()` 微秒级，代码内 `*0.001` 统一为 ms）。
+
+**注意**：`performance.now()` 较 `Date.now()` 有性能开销，**不建议正式版本开启**；手动配置未生效先查基础库版本 ≥3.5.4。
+
 ## 3. 定位 GC 尖峰
 
 1. 真机 development 包连 Profiler，CPU 模块录一段含卡顿的帧。
@@ -145,7 +160,8 @@
 
 - 机型档：iOS 低档 = iPhone 6sp/7/8（RAM 2G）；中高档 = 7P/8P/X/11（RAM 3G+）。
 - iOS 高性能模式：3G RAM 机型系统上限 **1.5G**，**安全峰值约 1.2–1.3G**；进程离 1.5G 还远就崩 → 查 UnityHeap 预留是否足够。
-- iOS 高性能+模式：GPU 内存移到平台进程（微信 WebContent / 抖音进程），给游戏腾出空间。
+- iOS 高性能+模式：保留游戏独立进程 + 渲染挪回微信进程（GPU 内存移到平台进程微信 WebContent / 抖音进程），改善渲染效果与内存；建议 WebGL2、内存压力大的游戏开启，开启后验证进程内存/渲染兼容性/帧耗时。
+- **高性能模式开通与判别**（iOSOptimization.md，镜像核实 round 39）：开通 = MP 后台 → 能力地图 → 研发能力 → 生产提效包 → 开通高性能模式，`game.json` 设 `iOSHighPerformance:true`（去掉开关回退普通模式对比）；判别 = 删本地小游戏重进开调试，vconsole「game start」日志 `render="h5"` 即高性能；系统要求 iOS≥14.0、基础库≥2.23.1（约 90% 用户），不满足回退普通。**坑**：高性能模式勿服务端设 Cookie（跨域读不到）；业务代码无需改、普通/高性能无缝切换；启动初始 CPU 高峰用于 WASM 编译优化，代码分包后回落。
 - iOS 小游戏与客户端同进程（微信普通模式），总内存撞 OOM 阈值即被系统 kill；微信有 `wx.onMemoryWarning` 回调，连续多次告警会主动销毁小游戏。
 - 进程名：微信 Android `WeChat AppBrand1/2`、iOS 普通 `WeChat`/高性能 `WebContent`；抖音 Android `minigame0–3`、iOS `WebContent`。PerfDog iOS 以紫色 XcodeMemory 为准。
 - Cocos 侧同源红线（2G RAM→1G、3G RAM→1.4G、基础库常驻约 65M）见 [Cocos 场景切换后内存排查](./Cocos场景切换后内存排查.md)，与上表 iOS 数值一致（同为 iOS 系统级 OOM 限制）。

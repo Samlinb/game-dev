@@ -1,6 +1,7 @@
 # Unity uGUI 浮层遮挡与点击穿透
 
 适用于 Unity uGUI 的 `Screen Space - Overlay` 界面。Ninja 在 Unity 2021.3.14f1c1 的 Boot 场景中验证了统一 Canvas 排序，用于解决 Tooltip、下拉菜单和弹窗被公共资源栏覆盖，或显示在前面却由后方按钮收到点击的问题。
+核对日期：2026-11-13（外部 Unity 文档 UICanvas / GraphicRaycaster / Canvas.overrideSorting 本轮 WebFetch 复核可达且支持结论；Ninja Boot 项目实测 21 项检查由来源会话执行，实测日期未登记）。
 
 ## 复现与定位
 

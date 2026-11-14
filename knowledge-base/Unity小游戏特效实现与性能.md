@@ -17,7 +17,7 @@
 | 发光（不用后处理） | **加法混合（Additive）Sprite/材质**，或 Rim 边缘发光 Shader | 零全屏开销；Bloom 的替代方案（§4/§5） |
 | 溶解/消失 | **Alpha Clip（噪声图 + _Cutoff 动画）**，硬边但无透明排序问题 | 普通片元 Shader，无 compute 依赖（§4） |
 | Bloom 后处理 | **WebGL 2.0 才可用；默认关闭**，仅高档机按需开 | WebGL 1.0 URP 后处理编译失败（KB-014 §4）；微信建议默认不用后处理（§5） |
-| 同屏粒子数上限 | **无官方公开数值**，按目标低端机压测定（模板帧率预算 30fps） | 微信 ParticleBudget 页待核对；UWA 只给定性建议（§2/§6） |
+| 同屏粒子数上限 | **无官方公开固定数值**，按目标低端机压测定（模板帧率预算 30fps）；官方 Particle Budget 方案按时间预算（ms）调度而非固定粒子数（§2.4） | 微信 ParticleBudget（镜像已核实 §2.4）；UWA 定性建议（§2/§6） |
 | 特效卡顿第一排查项 | **半透明 OverDraw**（粒子+UI 是主要来源），其次 CPU 粒子模拟 | UWA 小游戏简谱 + 微信 RenderOptimization（§6/§7） |
 
 ---
@@ -114,6 +114,23 @@ private IEnumerator ReturnWhenDone(GameObject go, ParticleSystem ps)
 - 大量随机、短命、同质的小元素（爆炸碎片、星星、烟尘）→ Particle System，一个系统一次 DrawCall 画全部粒子，比 N 个 Spine/节点便宜。
 - **未知量**：目标机型同屏粒子数上限与 Spine 骨架数上限都要压测，方法见 §6.2。
 
+### 2.4 微信 Particle Budget 方案（官方文档，镜像取得已核实）
+
+来源：微信官方适配文档 `Design/ParticleBudget.md`，经第三方镜像 `BlackTom900131/minigame-unity-webgl-transform` 取全文（gh api，2026-11-13）；原页 developers.weixin.qq.com JS 渲染，待浏览器最终复核。官方文档内容。
+
+**核心机制**：限制每帧粒子模拟预算，按优先级手动调用 `Particle.Simulate`，在性能与表现间平衡（比强制降帧对表现更友好）。两个核心组件：
+
+| 组件 | 职责 |
+|------|------|
+| `ParticleSystemController` | 与 Particle System 同 GameObject；设优先级预设、注册到 Budget、计算优先级 |
+| `ParticleSimulationBudgetManager` | 全局单例；维护 ForceUpdate（每帧强制）+ Managed（按优先级 + 时间预算按需）两个数组；`Max Frame Budget MS` 设每帧预算（毫秒） |
+
+**优先级三因素**：预设类别（Force Update > High Priority > Normal）、距上次更新间隔（越久越高）、与相机距离（越近越高）。公式见 Demo `ParticleSystemController.CalculatePriority`，可自定义。（注：屏占比理论上比距离更合理，但需两次矩阵计算反而伤性能，故用距离。）
+
+**性能数据（官方实测，保留设备条件）**：Mi 8 UD，101 个粒子特效（4 ForceUpdate / 34 HighPriority / 其余 Normal），Budget=2ms/帧 → `ParticleSimulationBudgetManager.LateUpdate` 开销略高于 2ms；原方案全粒子模拟 3.43ms 且不可控。
+
+**接入判断**：粒子密集场景适用；关键特效 Force Update、次要特效优先级管理；高/中/低配只需调预算值。Demo：`wechat-miniprogram/minigame-unity-webgl-transform/Demo/particlebudget`（官方仓库已封，镜像可查）。
+
 ---
 
 ## 3. 拖尾：TrailRenderer / LineRenderer
@@ -201,14 +218,14 @@ trail.emitting = true;
 
 **决策**：2D 休闲小游戏**默认全局关闭后处理**。发光需求用 §4.1 加法混合 Sprite 满足。只有「WebGL 2.0 包 + 设备分档高档 + 美术强需求」三条件同时成立才开 Bloom，且按 §5.2 降级参数。设备分档接 [小游戏分辨率适配与降级策略](./小游戏分辨率适配与降级策略.md)（中档关后处理、低档关后处理+粒子减半已在该条目降级表）。
 
-### 5.2 Bloom 开启时的官方降级参数（Unity 6.6 手册原文）
+### 5.2 Bloom 开启时的官方降级参数（Unity 6.6 手册原文 + URP 14 版本边界）
 
 Bloom 是 URP Volume Override（启用路径：Camera 勾 Post Processing + Volume + Bloom Override，见 [URP 后处理目录](https://docs.unity.com/en-us/engine/6000.6/manual/post-processing-and-full-screen-effects/urp)）。官方性能建议逐条：
 
 | 参数 | 官方原文/默认值 | 小游戏设置 |
 |------|----------------|-----------|
 | High Quality Filtering | 「disable this property to greatly improve performance, especially on lower-end hardware」 | **关闭** |
-| Filter | 「Dual is a faster alternative for mobile devices. Kawase… fastest option at low resolution」 | **Dual 或 Kawase**（默认 Gaussian 最贵） |
+| Filter | 「Dual is a faster alternative for mobile devices. Kawase… fastest option at low resolution」 | **Dual 或 Kawase**（默认 Gaussian 最贵）⚠️ **仅 Unity 6+/URP 15+；URP 14（本项目）无此下拉**，见下方版本边界 |
 | Downscale | 「For best performance, set this value to Quarter」 | **Quarter**（1/4 分辨率起模糊） |
 | Max Iterations | 默认 6；「Decreasing this value reduces processing load… especially on mobile devices with high DPI screens」 | **≤4**（高 DPI 手机屏收益明显） |
 | Intensity | 默认 0（=关闭）；范围 0–1 | 按需，0 即关 |
@@ -216,7 +233,7 @@ Bloom 是 URP Volume Override（启用路径：Camera 勾 Post Processing + Volu
 | Lens Dirt | 「try a lower resolution Texture」 | 不用或低分辨率贴图 |
 
 来源：[Bloom Volume Override reference for URP](https://docs.unity.com/en-us/engine/6000.6/manual/post-processing-and-full-screen-effects/urp/effect-list/bloom)（Unity 6.6 手册；核对 2026-11-13）。
-**版本边界**：Filter/Downscale 等属性在 URP 14（团结 2022.3 对应版本）是否同名存在**待核对**（§9）；「1/4 分辨率下采样」方向有 UWA 独立佐证：「Bloom中低端机可从1/4分辨率开始下采样」（[UWA 小游戏简谱](https://blog.uwa4d.com/archives/UWA_MiniGame.html) §6.4，核对 2026-11-13）。
+**版本边界（URP 14 已核实，round 31）**：本项目 URP 14（团结 2022.3）Bloom 参数集经 [URP 14 包文档](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@14.0/manual/post-processing-bloom.html) 核实——**有** Threshold(0.9)/Intensity(0)/Scatter(0.7)/Tint/Clamp(65472)/High Quality Filtering/Downscale(Quarter 推荐)/Max Iterations(6)/Lens Dirt；**无 Filter（Gaussian/Dual/Kawase）下拉**（Unity 6+/URP 15+ 才有，URP 14 仅 High Quality Filtering 开关切换 bicubic/bilinear）。Downscale/Max Iterations 藏在 More(⋮) > Show Additional Properties。**故本项目降级用：关 High Quality Filtering + Downscale=Quarter + Max Iterations≤4，不用 Filter 下拉**。「1/4 下采样」方向有 UWA 独立佐证（[UWA 小游戏简谱](https://blog.uwa4d.com/archives/UWA_MiniGame.html) §6.4）。
 
 ### 5.3 后处理的隐性成本（外部案例，UWA）
 
@@ -282,9 +299,9 @@ Bloom 是 URP Volume Override（启用路径：Camera 勾 Post Processing + Volu
 
 | # | 项 | 恢复条件 | 备注 |
 |---|-----|---------|------|
-| 1 | 微信 ParticleBudget.html 正文（Particle Simulate Budget 方案的参数与数值） | IAB 浏览器渲染 | 2026-11-13 WebFetch 只得导航壳；页面存在于 Design/ 目录（导航确认标题「优化实战: Particle Simulate Budget方案」），是官方粒子预算的第一手来源 |
-| 2 | 微信 RenderOptimization.html 正文复核 | IAB 浏览器渲染 | round 6 曾服务端渲染可达（内容核对 2026-04-09），2026-11-13 两次 WebFetch 均只得导航壳——可达性已变化；本条目经 DrawCall 条目转引的结论保留旧核对日期 |
-| 3 | URP 14（团结 2022.3）Bloom 属性集是否与 Unity 6.6 手册一致（Filter/Downscale/Max Iterations） | 本地装 URP 14 包后查 Inspector/包文档 | §5.2 参数表按 6.6 手册核对；降级方向（1/4 下采样、关高质量过滤）有 UWA 交叉 |
+| 1 | ~~微信 ParticleBudget.html 正文~~ | **已解决（round 23 镜像）** | 经镜像 BlackTom900131/minigame-unity-webgl-transform `Design/ParticleBudget.md` 取全文（gh api），机制/参数/Mi 8 UD 实测已写入 §2.4；原页 JS 渲染待浏览器最终复核 |
+| 2 | ~~微信 RenderOptimization.html 正文复核~~ | **已解决（round 23 镜像）** | 经同一镜像 `Design/RenderOptimization.md` 取全文（gh api），核实 DrawCall 条目转引结论并补充数值（DrawCall≤200/250、单图≤512/图集≤1024、纹理≤5、阴影贴图≤1024、后处理不建议、Stencil 在 iOS 15.4 异常）；原页待浏览器最终复核 |
+| 3 | ~~URP 14 Bloom 属性集是否与 Unity 6.6 手册一致~~ | **已解决（round 31 URP 14 包文档）** | URP 14 有 High Quality Filtering/Downscale/Max Iterations，**无 Filter（Gaussian/Dual/Kawase）下拉**（Unity 6+ 才有）；§5.2 版本边界已修正 |
 | 4 | 团结引擎新版本/微信抖音壳是否支持 WebGPU（决定 VFX Graph 未来可用性） | 团结版本说明 + 平台适配文档出现 WebGPU 声明 | 当前团结 1.3 手册明确仅 WebGL 1/2（§1.3） |
 | 5 | 目标低端机同屏粒子数上限实测 | 首次出包 + 低端真机 | §6.2 压测法；与 KB-009 出包前置合并执行 |
 
@@ -304,11 +321,14 @@ Bloom 是 URP Volume Override（启用路径：Camera 勾 Post Processing + Volu
 | [Trail Renderer component reference（Unity 6.6）](https://docs.unity.com/en-us/engine/6000.6/manual/visual-effects/lines-trails-billboards/rendering-trails/class-trail-renderer) | 官方规定 | 2026-11-13 | §3.2 参数定义 |
 | [Lines and trails 目录（Unity 6.6）](https://docs.unity.com/en-us/engine/6000.6/manual/visual-effects/lines-trails-billboards) | 官方规定 | 2026-11-13 | §3.1 管线兼容表 |
 | [Bloom Volume Override reference for URP（Unity 6.6）](https://docs.unity.com/en-us/engine/6000.6/manual/post-processing-and-full-screen-effects/urp/effect-list/bloom) | 官方规定 | 2026-11-13 | §5.2 降级参数原文 |
+| [URP 14 包文档 Bloom](https://docs.unity3d.com/Packages/com.unity.render-pipelines.universal@14.0/manual/post-processing-bloom.html) | 官方规定（URP 14↔Unity 2022.3） | 2026-11-13 round 31 | §5.2 版本边界：URP 14 无 Filter 下拉，有 HQF/Downscale/Max Iterations |
 | [URP 后处理目录（Unity 6.6）](https://docs.unity.com/en-us/engine/6000.6/manual/post-processing-and-full-screen-effects/urp) | 官方规定 | 2026-11-13 | §5.2 Volume 启用路径 |
 | [Unity Manual WebGL2（Unity 6.6）](https://docs.unity.com/en-us/engine/6000.6/manual/platform-specific/webgl/develop/graphics/web-gl2) | 官方规定 | 2026-11-13 | §4.2 变体内存警告 |
 | [UWA Unity 小游戏优化简谱](https://blog.uwa4d.com/archives/UWA_MiniGame.html) | 外部案例（通用指南，无特效专项机型数值） | 2026-11-13 | §2.1 Max Particles 定性、§5.2 Bloom 1/4 下采样、§5.3 全屏 OverDraw/HDR、§6.2 PC 工具差异 |
 | [QianMo/Awesome-Unity-Shader](https://github.com/QianMo/Awesome-Unity-Shader) | 外部资源（2014–2017 教学存档，无 LICENSE） | 2026-11-13 | §4.3 复用边界 |
-| 微信 RenderOptimization（经 DrawCall 条目转引） | 官方规定 | 2026-04-09（**原页 2026-11-13 待复核**） | §5.1 默认不用后处理、§6.1 OverDraw 警告 |
+| 微信 RenderOptimization（镜像 Design/RenderOptimization.md 全文核实） | 官方文档内容（第三方镜像取得） | 2026-11-13 镜像核实（原页核对 2026-04-09，原页待浏览器复核） | §5.1 默认不用后处理、§6.1 OverDraw 警告 |
+| 微信 ParticleBudget（镜像 Design/ParticleBudget.md 全文） | 官方文档内容（第三方镜像取得） | 2026-11-13 | §2.4 Particle Budget 机制/参数/Mi 8 UD 实测 |
+| 镜像仓库 BlackTom900131/minigame-unity-webgl-transform | 官方文档第三方镜像（原 wechat-miniprogram 仓库已封）；gh api contents 取 Design/*.md 源文 | 2026-11-13 round 23 验证可达 | A28/A29 替代通道；内容须与官方交叉，原页待浏览器复核 |
 | 模板工程 Grep/find + GameManager.cs/GameConfig.cs | 项目实测 | 2026-11-13 | §8 无特效代码、帧率 30、PrefabPool 入口 |
 
 ## 相关条目

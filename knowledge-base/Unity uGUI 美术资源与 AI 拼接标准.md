@@ -1,6 +1,9 @@
 # Unity uGUI 美术资源与 AI 拼接标准
 
+已有切图或效果图，要走本仓库的预检、版本化打包和引擎验收时，见[游戏界面从设计稿到 Prefab 交付](./游戏界面从设计稿到Prefab交付.md)。
+
 适用于用 AI 设计或还原游戏界面，并在 Unity 中交付可编辑、可适配的 uGUI Prefab。已有工程优先复用现行 Canvas、字体、组件库和资源导入规则。文中的竖屏尺寸、设计参数和验收阈值是首屏试点示例。
+核对日期：2026-11-13（外部 Unity 文档 CanvasScaler / Screen.safeArea / RectTransform / 9SliceSprites 本轮 WebFetch 复核可达；PSD2UGUI_X/PSD2Unity/PSD2UI 本地源码与 118 项测试由来源会话核对，日期未登记；上游版本 commit 见「三个项目的评估」）。
 
 **工具选型。** 要快速从已有 PSD 得到 Unity 控件初稿，优先试 **PSD2UGUI_X**。要把美术与 AI 的组件、列表和资源交付做成可预检的长期流程，优先评估 **PSD2UI + 项目 Unity Adapter**，由 PSD2UI 导出布局和资源，由 Adapter 映射项目组件并保存 Prefab。**PSD2Unity** 适合纯图界面、静态摆位和切图对照。
 

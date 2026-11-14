@@ -30,6 +30,8 @@ skeletonGraphic.freeze = true;   // 停止更新
 skeletonGraphic.freeze = false;  // 恢复更新
 ```
 
+**官方适用边界（main-components 核实，round 34）**：`freeze` 属性**仅 SkeletonGraphic 有**（官方原文「When set to true, the SkeletonGraphic will no longer be updated」）；SkeletonRenderer/SkeletonAnimation **无 freeze**，改用 `UpdateWhenInvisible`（不可见时降更新模式，可见自动重置 FullUpdate）或手动更新（§1.2）。**UI 裁剪注意**：UpdateWhenInvisible 的可见性测试需 RectMask2D，Canvas/普通 Mask 单独不做该测试。
+
 ### 1.2 round-robin 分帧更新
 
 来源线索：[Spine 官方论坛：性能优化](https://zh.esotericsoftware.com/forum/d/25472-spine性能优化)（JS 渲染，论坛原文未取到）；API 以 GitHub spine-runtimes 4.3 源码为准：[SkeletonAnimationBase.cs](https://github.com/EsotericSoftware/spine-runtimes/blob/4.3/spine-unity/Assets/Spine/Runtime/spine-unity/Components/Base/SkeletonAnimationBase.cs)（更新回调）+ [ISkeletonAnimation.cs](https://github.com/EsotericSoftware/spine-runtimes/blob/4.3/spine-unity/Assets/Spine/Runtime/spine-unity/ISkeletonAnimation.cs)（UpdateTiming/UpdateMode 枚举定义，round 17 定位），核对 2026-11-13。源码考证 + 示例。
@@ -79,6 +81,8 @@ public class SpineRoundRobin : MonoBehaviour
 - 与 Freeze 组合：屏幕外 Freeze，屏幕内次要骨架分帧
 
 **限制与修正（round 17）**：`UpdateTiming.ManualUpdate = 0` 就是「关闭自动更新」的公开档位——round 15「手动档未核实、round-robin 可能与组件自更新叠加」的疑虑已解除：设为 ManualUpdate 后组件不再自动更新，由 `UpdateOncePerFrame`（帧内幂等）手动驱动。论坛原帖实现仍未取到正文（需浏览器，总表 A22）。
+
+**官方手动更新模式（main-components 核实，round 34）**：除 UpdateOncePerFrame 外，官方文档另给手动驱动法——`skeletonAnimation.timeScale = 0f;` 停自动播放，再 `skeletonAnimation.Update(customDeltaTime);` 按需推进（timeScale=0.5 即半速）。配套 `ApplyAnimation()`（重应用动画不推进 AnimationState/物理）、`UpdateMesh()`（仅刷新网格忽略 UpdateMode）。官方文档**无** round-robin 每 N 帧节流的专门建议（该模式来自社区，论坛原帖 A22 待浏览器）。
 
 ### 1.3 简单动画不用 Spine
 
@@ -234,7 +238,7 @@ Spine 卡顿？
 
 | 内容 | 来源 | 恢复条件 |
 |------|------|----------|
-| round-robin 论坛原文实现 | zh.esotericsoftware.com/forum/d/25472 | IAB 浏览器渲染 |
+| round-robin 论坛原文实现 | 官方手动更新指引已核实（main-components：timeScale=0+Update / UpdateOncePerFrame / Freeze 仅 SkeletonGraphic，§1.1/§1.2）；论坛原帖仍待浏览器 | zh.esotericsoftware.com/forum/d/25472 |
 | ~~`UpdateTiming` 是否有手动/关闭自动更新的档位~~ | **已解决（round 17）**：枚举定义在 `ISkeletonAnimation.cs`（非独立文件），`ManualUpdate = 0` 即手动档；`UpdateMode` 完整 5 值含 `Nothing = 0` | GitHub 4.3 源码 ISkeletonAnimation.cs 全文核实 |
 | GPU 骨骼动画 WebGL 真机性能 | efunstudio.cn/web-demo | 真机实测 |
 | 少量动画移动端性能差（atlas 用法） | zh.esotericsoftware.com/forum/d/17526 | IAB 浏览器渲染 |
